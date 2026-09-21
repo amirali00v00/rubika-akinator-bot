@@ -8,28 +8,29 @@ from flask import Flask, request
 app = Flask(__name__)
 
 
-# =========================
+# ==========================================
 # تنظیمات
-# =========================
+# ==========================================
 
 RUBIKA_TOKEN = os.getenv("RUBIKA_TOKEN")
 
 if not RUBIKA_TOKEN:
-    raise RuntimeError("RUBIKA_TOKEN environment variable is not set")
+    raise RuntimeError("RUBIKA_TOKEN is not set")
 
 
 RUBIKA_API = f"https://botapi.rubika.ir/v3/{RUBIKA_TOKEN}"
 
 
-# هر کاربر یک بازی جداگانه دارد
+# هر chat یک بازی جداگانه
 games = {}
 
 
-# =========================
+# ==========================================
 # ترجمه انگلیسی به فارسی
-# =========================
+# ==========================================
 
 def translate_to_persian(text):
+
     url = "https://api.mymemory.translated.net/get"
 
     params = {
@@ -38,6 +39,7 @@ def translate_to_persian(text):
     }
 
     try:
+
         response = requests.get(
             url,
             params=params,
@@ -51,15 +53,17 @@ def translate_to_persian(text):
         return data["responseData"]["translatedText"]
 
     except Exception as e:
+
         print("Translation error:", e)
 
-        # اگر ترجمه شکست خورد، حداقل سؤال انگلیسی را از دست ندهیم
+        # اگر ترجمه شکست خورد،
+        # سؤال انگلیسی نمایش داده می‌شود
         return text
 
 
-# =========================
+# ==========================================
 # ارسال پیام به روبیکا
-# =========================
+# ==========================================
 
 def send_message(chat_id, text, inline_keypad=None):
 
@@ -74,88 +78,108 @@ def send_message(chat_id, text, inline_keypad=None):
         data["inline_keypad"] = inline_keypad
 
     try:
+
         response = requests.post(
             url,
             json=data,
             timeout=15
         )
 
-        print("Rubika response:", response.text)
+        print("SEND MESSAGE:")
+        print(response.status_code)
+        print(response.text)
 
         return response.json()
 
     except Exception as e:
-        print("Rubika send error:", e)
+
+        print("Send message error:", e)
+
         return None
 
 
-# =========================
-# دکمه‌های شیشه‌ای پاسخ
-# =========================
+# ==========================================
+# دکمه‌های شیشه‌ای
+# ==========================================
 
 def answer_keypad():
 
     return {
         "rows": [
+
             {
                 "buttons": [
+
                     {
                         "id": "answer_yes",
                         "type": "Simple",
                         "button_text": "✅ بله"
                     },
+
                     {
                         "id": "answer_no",
                         "type": "Simple",
                         "button_text": "❌ خیر"
                     }
+
                 ]
             },
+
             {
                 "buttons": [
+
                     {
                         "id": "answer_idk",
                         "type": "Simple",
                         "button_text": "🤷 نمی‌دانم"
                     }
+
                 ]
             },
+
             {
                 "buttons": [
+
                     {
                         "id": "answer_probably",
                         "type": "Simple",
                         "button_text": "🤔 احتمالاً"
                     },
+
                     {
                         "id": "answer_probably_no",
                         "type": "Simple",
                         "button_text": "🙅 احتمالاً خیر"
                     }
+
                 ]
             },
+
             {
                 "buttons": [
+
                     {
                         "id": "restart",
                         "type": "Simple",
                         "button_text": "🔄 شروع دوباره"
                     }
+
                 ]
             }
+
         ]
     }
 
 
-# =========================
-# شروع بازی
-# =========================
+# ==========================================
+# شروع بازی Akinator
+# ==========================================
 
 def start_game(chat_id):
 
     try:
 
-        print(f"Starting Akinator game for {chat_id}")
+        print(f"Starting Akinator for chat: {chat_id}")
 
         aki = akinator.Akinator()
 
@@ -163,9 +187,11 @@ def start_game(chat_id):
 
         games[chat_id] = aki
 
-        question = translate_to_persian(aki.question)
+        question = translate_to_persian(
+            aki.question
+        )
 
-        text = (
+        message = (
             "🧠 بازی Akinator شروع شد!\n\n"
             "به یک شخصیت فکر کن و به سؤال‌ها جواب بده.\n\n"
             f"❓ {question}"
@@ -173,24 +199,25 @@ def start_game(chat_id):
 
         send_message(
             chat_id,
-            text,
+            message,
             answer_keypad()
         )
 
     except Exception as e:
 
-        print("Akinator start error:", e)
+        print("AKINATOR START ERROR:")
+        print(repr(e))
 
         send_message(
             chat_id,
-            "❌ متأسفانه نتونستم بازی رو شروع کنم.\n"
-            "چند لحظه بعد دوباره امتحان کن."
+            "❌ نتونستم بازی رو شروع کنم.\n\n"
+            "لطفاً چند لحظه بعد دوباره /start رو بزن."
         )
 
 
-# =========================
+# ==========================================
 # پاسخ به سؤال Akinator
-# =========================
+# ==========================================
 
 def process_answer(chat_id, answer):
 
@@ -200,8 +227,8 @@ def process_answer(chat_id, answer):
 
         send_message(
             chat_id,
-            "⚠️ هنوز بازی‌ای شروع نکردی.\n"
-            "اول /start رو بفرست."
+            "⚠️ بازی فعالی وجود نداره.\n\n"
+            "برای شروع /start رو بفرست."
         )
 
         return
@@ -210,12 +237,16 @@ def process_answer(chat_id, answer):
     try:
 
         print(
-            f"User {chat_id} answered: {answer}"
+            f"Akinator answer: {answer}"
         )
 
         aki.answer(answer)
 
-        # آیا Akinator به حدس رسیده؟
+
+        # ==================================
+        # آیا Akinator به جواب رسیده؟
+        # ==================================
+
         if aki.finished:
 
             name = getattr(
@@ -236,139 +267,157 @@ def process_answer(chat_id, answer):
                 ""
             )
 
-            text = (
+            message = (
                 "🎯 فکر کنم فهمیدم!\n\n"
                 f"👤 شخصیت: {name}\n"
             )
 
             if description:
-                text += f"\n📝 توضیح:\n{description}\n"
+
+                message += (
+                    f"\n📝 توضیح:\n"
+                    f"{description}\n"
+                )
 
             if photo:
-                text += f"\n🖼️ عکس:\n{photo}\n"
 
-            text += (
+                message += (
+                    f"\n🖼️ عکس:\n"
+                    f"{photo}\n"
+                )
+
+            message += (
                 "\n\n"
-                "اگر درست حدس نزدم، فعلاً می‌تونی "
-                "با «🔄 شروع دوباره» یک بازی جدید شروع کنی."
+                "اگر درست حدس نزدم، "
+                "روی «🔄 شروع دوباره» بزن."
             )
 
             send_message(
                 chat_id,
-                text,
+                message,
                 answer_keypad()
             )
 
             return
 
 
+        # ==================================
         # سؤال بعدی
+        # ==================================
+
         question = translate_to_persian(
             aki.question
         )
 
-        text = (
-            f"❓ {question}"
-        )
-
         send_message(
             chat_id,
-            text,
+            f"❓ {question}",
             answer_keypad()
         )
 
+
     except Exception as e:
 
-        print("Akinator answer error:", e)
+        print("AKINATOR ANSWER ERROR:")
+        print(repr(e))
+
+        games.pop(
+            chat_id,
+            None
+        )
 
         send_message(
             chat_id,
-            "❌ هنگام ارتباط با Akinator مشکلی پیش اومد.\n"
-            "لطفاً دوباره /start رو بزن."
+            "❌ هنگام پردازش جواب مشکلی پیش اومد.\n\n"
+            "لطفاً /start رو بزن و دوباره امتحان کن."
         )
 
-        games.pop(chat_id, None)
 
+# ==========================================
+# Webhook
+# ==========================================
 
-# =========================
-# دریافت Webhook روبیکا
-# =========================
-
-@app.route("/webhook", methods=["POST"])
+@app.route(
+    "/webhook",
+    methods=["POST"]
+)
 def webhook():
 
     update = request.get_json(
         silent=True
     ) or {}
 
-    print("\n========== UPDATE ==========")
+
+    print("\n")
+    print("========== UPDATE ==========")
     print(update)
-    print("============================\n")
+    print("============================")
+    print("\n")
 
 
-    # --------------------------------
-    # حالت inline_message
-    # --------------------------------
+    # ======================================
+    # ساختار واقعی Update روبیکا
+    # ======================================
 
-    inline = update.get("inline_message")
-
-    if inline:
-
-        chat_id = inline.get("chat_id")
-
-        text = inline.get("text", "")
-
-        aux_data = inline.get(
-            "aux_data"
-        ) or {}
-
-        button_id = aux_data.get(
-            "button_id"
-        )
+    update_data = update.get(
+        "update"
+    ) or {}
 
 
-    # --------------------------------
-    # حالت update.new_message
-    # --------------------------------
+    new_message = update_data.get(
+        "new_message"
+    ) or {}
 
-    else:
 
-        update_data = update.get(
-            "update"
-        ) or {}
+    # chat_id در خود update است
+    chat_id = update_data.get(
+        "chat_id"
+    )
 
-        new_message = update_data.get(
-            "new_message"
-        ) or {}
 
-        chat_id = new_message.get(
-            "chat_id"
-        )
+    # متن پیام داخل new_message است
+    text = new_message.get(
+        "text",
+        ""
+    )
 
-        text = new_message.get(
-            "text",
-            ""
-        )
 
-        aux_data = new_message.get(
-            "aux_data"
-        ) or {}
+    # اطلاعات دکمه
+    aux_data = new_message.get(
+        "aux_data"
+    ) or {}
 
-        button_id = aux_data.get(
-            "button_id"
-        )
+
+    button_id = aux_data.get(
+        "button_id"
+    )
+
+
+    print("CHAT ID:", chat_id)
+    print("TEXT:", text)
+    print("BUTTON ID:", button_id)
 
 
     if not chat_id:
+
+        print("No chat_id found!")
+
         return "OK"
 
 
-    # =========================
-    # دکمه‌ها
-    # =========================
+    # ======================================
+    # دکمه‌های شیشه‌ای
+    # ======================================
 
     if button_id:
 
+        print(
+            "BUTTON CLICK:",
+            button_id
+        )
+
+
+        # شروع دوباره
         if button_id == "restart":
 
             games.pop(
@@ -376,7 +425,9 @@ def webhook():
                 None
             )
 
-            start_game(chat_id)
+            start_game(
+                chat_id
+            )
 
             return "OK"
 
@@ -412,33 +463,42 @@ def webhook():
         return "OK"
 
 
-    # =========================
+    # ======================================
     # پیام متنی
-    # =========================
+    # ======================================
 
     if text:
 
         clean_text = text.strip().lower()
 
 
+        # /start
         if clean_text in [
             "/start",
             "start",
             "/شروع"
         ]:
 
+            print(
+                "START COMMAND RECEIVED"
+            )
+
+
             games.pop(
                 chat_id,
                 None
             )
 
+
             start_game(
                 chat_id
             )
 
+
             return "OK"
 
 
+        # /stop
         if clean_text in [
             "/stop",
             "/خروج"
@@ -449,15 +509,18 @@ def webhook():
                 None
             )
 
+
             send_message(
                 chat_id,
                 "🛑 بازی متوقف شد.\n\n"
                 "برای شروع دوباره /start رو بزن."
             )
 
+
             return "OK"
 
 
+        # پیام ناشناخته
         send_message(
             chat_id,
             "🧠 برای شروع بازی /start رو بفرست."
@@ -467,19 +530,22 @@ def webhook():
     return "OK"
 
 
-# =========================
-# تست سلامت Render
-# =========================
+# ==========================================
+# صفحه اصلی Render
+# ==========================================
 
-@app.route("/", methods=["GET"])
+@app.route(
+    "/",
+    methods=["GET"]
+)
 def home():
 
     return "🧠 Rubika Akinator Bot is running!"
 
 
-# =========================
-# اجرای برنامه
-# =========================
+# ==========================================
+# اجرای محلی
+# ==========================================
 
 if __name__ == "__main__":
 
