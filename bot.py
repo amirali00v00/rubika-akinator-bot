@@ -17,11 +17,8 @@ RUBIKA_TOKEN = os.getenv("RUBIKA_TOKEN")
 if not RUBIKA_TOKEN:
     raise RuntimeError("RUBIKA_TOKEN is not set")
 
-
 RUBIKA_API = f"https://botapi.rubika.ir/v3/{RUBIKA_TOKEN}"
 
-
-# هر chat یک بازی جداگانه
 games = {}
 
 
@@ -54,10 +51,8 @@ def translate_to_persian(text):
 
     except Exception as e:
 
-        print("Translation error:", e)
+        print("TRANSLATION ERROR:", repr(e))
 
-        # اگر ترجمه شکست خورد،
-        # سؤال انگلیسی نمایش داده می‌شود
         return text
 
 
@@ -93,7 +88,7 @@ def send_message(chat_id, text, inline_keypad=None):
 
     except Exception as e:
 
-        print("Send message error:", e)
+        print("SEND MESSAGE ERROR:", repr(e))
 
         return None
 
@@ -106,90 +101,110 @@ def answer_keypad():
 
     return {
         "rows": [
-
             {
                 "buttons": [
-
                     {
                         "id": "answer_yes",
                         "type": "Simple",
                         "button_text": "✅ بله"
                     },
-
                     {
                         "id": "answer_no",
                         "type": "Simple",
                         "button_text": "❌ خیر"
                     }
-
                 ]
             },
-
             {
                 "buttons": [
-
                     {
                         "id": "answer_idk",
                         "type": "Simple",
                         "button_text": "🤷 نمی‌دانم"
                     }
-
                 ]
             },
-
             {
                 "buttons": [
-
                     {
                         "id": "answer_probably",
                         "type": "Simple",
                         "button_text": "🤔 احتمالاً"
                     },
-
                     {
                         "id": "answer_probably_no",
                         "type": "Simple",
                         "button_text": "🙅 احتمالاً خیر"
                     }
-
                 ]
             },
-
             {
                 "buttons": [
-
                     {
                         "id": "restart",
                         "type": "Simple",
                         "button_text": "🔄 شروع دوباره"
                     }
-
                 ]
             }
-
         ]
     }
 
 
 # ==========================================
-# شروع بازی Akinator
+# تست اتصال Akinator
 # ==========================================
 
 def start_game(chat_id):
 
+    print("\n================================")
+    print("STARTING AKINATOR")
+    print("CHAT:", chat_id)
+    print("================================")
+
     try:
 
-        print(f"Starting Akinator for chat: {chat_id}")
+        print("1) Creating Akinator object...")
 
         aki = akinator.Akinator()
 
-        aki.start_game()
+        print("2) Akinator object created.")
+
+        print("3) Calling start_game()...")
+
+        try:
+
+            aki.start_game()
+
+            print("4) AKINATOR GAME STARTED!")
+
+        except Exception as e:
+
+            print(
+                "4) AKINATOR START EXCEPTION:",
+                repr(e)
+            )
+
+            raise
+
+
+        print("5) Question received:")
+        print(repr(aki.question))
+
 
         games[chat_id] = aki
+
+
+        print("6) Translating question...")
 
         question = translate_to_persian(
             aki.question
         )
+
+
+        print("7) Translation result:")
+        print(repr(question))
+
 
         message = (
             "🧠 بازی Akinator شروع شد!\n\n"
@@ -197,31 +212,51 @@ def start_game(chat_id):
             f"❓ {question}"
         )
 
+
+        print("8) Sending first question...")
+
         send_message(
             chat_id,
             message,
             answer_keypad()
         )
 
+
+        print("9) FIRST QUESTION SENT!")
+
+
     except Exception as e:
 
+        print("\n!!!!!!!!!!!!!!!!!!!!!!!!")
         print("AKINATOR START ERROR:")
         print(repr(e))
+        print("TYPE:", type(e).__name__)
+        print("!!!!!!!!!!!!!!!!!!!!!!!!\n")
+
 
         send_message(
             chat_id,
             "❌ نتونستم بازی رو شروع کنم.\n\n"
-            "لطفاً چند لحظه بعد دوباره /start رو بزن."
+            "اتصال Akinator روی سرور با مشکل مواجه شد.\n"
+            "لطفاً دوباره /start رو امتحان کن."
         )
 
 
 # ==========================================
-# پاسخ به سؤال Akinator
+# پاسخ به Akinator
 # ==========================================
 
 def process_answer(chat_id, answer):
 
+    print("\n================================")
+    print("PROCESS ANSWER")
+    print("CHAT:", chat_id)
+    print("ANSWER:", answer)
+    print("================================")
+
+
     aki = games.get(chat_id)
+
 
     if aki is None:
 
@@ -236,18 +271,21 @@ def process_answer(chat_id, answer):
 
     try:
 
-        print(
-            f"Akinator answer: {answer}"
-        )
+        print("Calling aki.answer()...")
 
         aki.answer(answer)
 
+        print("Answer processed.")
+
 
         # ==================================
-        # آیا Akinator به جواب رسیده؟
+        # پایان بازی
         # ==================================
 
         if aki.finished:
+
+            print("AKINATOR FINISHED!")
+
 
             name = getattr(
                 aki,
@@ -267,10 +305,12 @@ def process_answer(chat_id, answer):
                 ""
             )
 
+
             message = (
                 "🎯 فکر کنم فهمیدم!\n\n"
                 f"👤 شخصیت: {name}\n"
             )
+
 
             if description:
 
@@ -279,6 +319,7 @@ def process_answer(chat_id, answer):
                     f"{description}\n"
                 )
 
+
             if photo:
 
                 message += (
@@ -286,17 +327,20 @@ def process_answer(chat_id, answer):
                     f"{photo}\n"
                 )
 
+
             message += (
                 "\n\n"
                 "اگر درست حدس نزدم، "
                 "روی «🔄 شروع دوباره» بزن."
             )
 
+
             send_message(
                 chat_id,
                 message,
                 answer_keypad()
             )
+
 
             return
 
@@ -305,9 +349,12 @@ def process_answer(chat_id, answer):
         # سؤال بعدی
         # ==================================
 
+        print("Getting next question...")
+
         question = translate_to_persian(
             aki.question
         )
+
 
         send_message(
             chat_id,
@@ -318,23 +365,28 @@ def process_answer(chat_id, answer):
 
     except Exception as e:
 
+        print("\n!!!!!!!!!!!!!!!!!!!!!!!!")
         print("AKINATOR ANSWER ERROR:")
         print(repr(e))
+        print("TYPE:", type(e).__name__)
+        print("!!!!!!!!!!!!!!!!!!!!!!!!\n")
+
 
         games.pop(
             chat_id,
             None
         )
 
+
         send_message(
             chat_id,
             "❌ هنگام پردازش جواب مشکلی پیش اومد.\n\n"
-            "لطفاً /start رو بزن و دوباره امتحان کن."
+            "لطفاً /start رو بزن."
         )
 
 
 # ==========================================
-# Webhook
+# Webhook روبیکا
 # ==========================================
 
 @app.route(
@@ -355,10 +407,6 @@ def webhook():
     print("\n")
 
 
-    # ======================================
-    # ساختار واقعی Update روبیکا
-    # ======================================
-
     update_data = update.get(
         "update"
     ) or {}
@@ -369,20 +417,17 @@ def webhook():
     ) or {}
 
 
-    # chat_id در خود update است
     chat_id = update_data.get(
         "chat_id"
     )
 
 
-    # متن پیام داخل new_message است
     text = new_message.get(
         "text",
         ""
     )
 
 
-    # اطلاعات دکمه
     aux_data = new_message.get(
         "aux_data"
     ) or {}
@@ -400,7 +445,7 @@ def webhook():
 
     if not chat_id:
 
-        print("No chat_id found!")
+        print("NO CHAT ID!")
 
         return "OK"
 
@@ -412,13 +457,14 @@ def webhook():
     if button_id:
 
         print(
-            "BUTTON CLICK:",
+            "BUTTON CLICKED:",
             button_id
         )
 
 
-        # شروع دوباره
         if button_id == "restart":
+
+            print("RESTART GAME")
 
             games.pop(
                 chat_id,
@@ -472,16 +518,13 @@ def webhook():
         clean_text = text.strip().lower()
 
 
-        # /start
         if clean_text in [
             "/start",
             "start",
             "/شروع"
         ]:
 
-            print(
-                "START COMMAND RECEIVED"
-            )
+            print("START COMMAND RECEIVED")
 
 
             games.pop(
@@ -498,11 +541,13 @@ def webhook():
             return "OK"
 
 
-        # /stop
         if clean_text in [
             "/stop",
             "/خروج"
         ]:
+
+            print("STOP COMMAND RECEIVED")
+
 
             games.pop(
                 chat_id,
@@ -520,7 +565,6 @@ def webhook():
             return "OK"
 
 
-        # پیام ناشناخته
         send_message(
             chat_id,
             "🧠 برای شروع بازی /start رو بفرست."
@@ -531,7 +575,7 @@ def webhook():
 
 
 # ==========================================
-# صفحه اصلی Render
+# صفحه اصلی
 # ==========================================
 
 @app.route(
@@ -544,7 +588,7 @@ def home():
 
 
 # ==========================================
-# اجرای محلی
+# اجرای برنامه
 # ==========================================
 
 if __name__ == "__main__":
@@ -556,7 +600,29 @@ if __name__ == "__main__":
         )
     )
 
+
     app.run(
         host="0.0.0.0",
         port=port
-        )
+    )
+
+"requirements.txt"
+
+این هم دقیقاً:
+
+Flask
+requests
+akinator==2.1.0
+gunicorn
+
+حالا Commit → Push → صبر کن Render سبز بشه → "/start" بزن.
+
+این دفعه اگر دوباره خطا بده، لاگ خیلی دقیق‌تر خواهد بود؛ مخصوصاً این قسمت‌ها:
+
+1) Creating Akinator object...
+2) Akinator object created.
+3) Calling start_game()...
+
+و هر چیزی که بعدش چاپ شود.
+
+همون لاگ جدید رو بفرست؛ دیگه لازم نیست خودت چیزی ازش رو تحلیل کنی. 😎
