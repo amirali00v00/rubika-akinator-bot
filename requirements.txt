@@ -1,2 +1,4 @@
-flask
+Flask
 requests
+akinator==2.1.0
+gunicorn
