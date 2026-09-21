@@ -605,24 +605,3 @@ if __name__ == "__main__":
         host="0.0.0.0",
         port=port
     )
-
-"requirements.txt"
-
-این هم دقیقاً:
-
-Flask
-requests
-akinator==2.1.0
-gunicorn
-
-حالا Commit → Push → صبر کن Render سبز بشه → "/start" بزن.
-
-این دفعه اگر دوباره خطا بده، لاگ خیلی دقیق‌تر خواهد بود؛ مخصوصاً این قسمت‌ها:
-
-1) Creating Akinator object...
-2) Akinator object created.
-3) Calling start_game()...
-
-و هر چیزی که بعدش چاپ شود.
-
-همون لاگ جدید رو بفرست؛ دیگه لازم نیست خودت چیزی ازش رو تحلیل کنی. 😎
